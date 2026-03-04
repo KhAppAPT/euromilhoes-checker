@@ -16,80 +16,79 @@ bets = [
 ]
 
 # ==============================
-# OBTER RESULTADO REAL
+# FUNÇÃO PARA OBTER RESULTADOS
 # ==============================
 
-url = "https://raw.githubusercontent.com/jcphlux/euromillions-results/master/latest.json"
+def get_results():
+    try:
+        url = "https://www.loteriasyapuestas.es/servicios/buscadorSorteos?game_id=EMIL&celebrados=true&limit=1"
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json"
+        }
 
-response = requests.get(url)
+        response = requests.get(url, headers=headers, timeout=15)
 
-if response.status_code != 200:
-    raise Exception("Erro ao obter resultados.")
+        if response.status_code != 200:
+            return None, "Erro HTTP: " + str(response.status_code)
 
-data = response.json()
+        data = response.json()
+        draw = data["data"][0]
 
-draw_numbers = sorted(data["numbers"])
-draw_stars = sorted(data["stars"])
-jackpot = data.get("jackpot", "N/A")
-draw_date = data.get("date", "N/A")
+        combinacion = draw["combinacion"].split()
+        numbers = sorted([int(n) for n in combinacion[:5]])
+        stars = sorted([int(n) for n in combinacion[5:]])
 
-prize_data = data.get("prizes", [])
-# ==============================
-# FUNÇÕES
-# ==============================
+        return {
+            "date": draw["fecha_sorteo"],
+            "numbers": numbers,
+            "stars": stars,
+            "jackpot": draw.get("bote", "N/A"),
+            "prizes": draw.get("premios", [])
+        }, None
 
-def check_bet(bet):
-    matched_numbers = len(set(bet["numbers"]) & set(draw_numbers))
-    matched_stars = len(set(bet["stars"]) & set(draw_stars))
-    return matched_numbers, matched_stars
-
-def get_prize(m_numbers, m_stars):
-    for p in prize_data:
-        if p["aciertos"] == f"{m_numbers}+{m_stars}":
-            value = p["premio"].replace(".", "").replace(",", ".")
-            return float(value)
-    return 0.0
-
-# ==============================
-# PROCESSAR APOSTAS
-# ==============================
-
-total_won = 0
-
-results_text = f"🎯 Euromilhões {draw['fecha_sorteo']}\n\n"
-results_text += f"Números: {draw_numbers} ⭐ {draw_stars}\n"
-results_text += f"Jackpot: {jackpot}\n\n"
-
-for i, bet in enumerate(bets, start=1):
-    m_numbers, m_stars = check_bet(bet)
-    prize = get_prize(m_numbers, m_stars)
-    total_won += prize
-    results_text += f"Aposta {i}: {m_numbers}+{m_stars} → {prize:.2f}€\n"
-
-results_text += f"\n💰 Total ganho esta semana: {total_won:.2f}€\n"
+    except Exception as e:
+        return None, str(e)
 
 # ==============================
-# HISTÓRICO
+# OBTER RESULTADO
 # ==============================
 
-history_file = "history.json"
+draw_data, error = get_results()
 
-try:
-    with open(history_file, "r") as f:
-        history = json.load(f)
-except:
-    history = []
+if error:
+    results_text = "⚠️ ERRO AO OBTER RESULTADOS\n\n" + error
+else:
+    draw_numbers = draw_data["numbers"]
+    draw_stars = draw_data["stars"]
+    jackpot = draw_data["jackpot"]
+    prize_data = draw_data["prizes"]
 
-history.append({
-    "date": draw["fecha_sorteo"],
-    "won": total_won
-})
+    def check_bet(bet):
+        matched_numbers = len(set(bet["numbers"]) & set(draw_numbers))
+        matched_stars = len(set(bet["stars"]) & set(draw_stars))
+        return matched_numbers, matched_stars
 
-with open(history_file, "w") as f:
-    json.dump(history, f, indent=2)
+    def get_prize(m_numbers, m_stars):
+        for p in prize_data:
+            if p["aciertos"] == f"{m_numbers}+{m_stars}":
+                value = p["premio"].replace(".", "").replace(",", ".")
+                return float(value)
+        return 0.0
 
-total_acumulado = sum(item["won"] for item in history)
-results_text += f"📊 Total acumulado: {total_acumulado:.2f}€\n"
+    total_won = 0
+
+    results_text = f"🎯 Euromilhões {draw_data['date']}\n\n"
+    results_text += f"Números: {draw_numbers} ⭐ {draw_stars}\n"
+    results_text += f"Jackpot: {jackpot}\n\n"
+
+    for i, bet in enumerate(bets, start=1):
+        m_numbers, m_stars = check_bet(bet)
+        prize = get_prize(m_numbers, m_stars)
+        total_won += prize
+        results_text += f"Aposta {i}: {m_numbers}+{m_stars} → {prize:.2f}€\n"
+
+    results_text += f"\n💰 Total ganho: {total_won:.2f}€"
 
 # ==============================
 # ENVIAR EMAIL
@@ -108,4 +107,4 @@ with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
     server.login(EMAIL, PASSWORD)
     server.send_message(msg)
 
-print("Email enviado com sucesso!")
+print("Processo concluído.")
