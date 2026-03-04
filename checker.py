@@ -1,4 +1,5 @@
 import requests
+from bs4 import BeautifulSoup
 import smtplib
 import os
 from email.mime.text import MIMEText
@@ -15,22 +16,31 @@ bets = [
 ]
 
 # ==============================
-# OBTER RESULTADOS (API alternativa)
+# OBTER RESULTADOS VIA SCRAPING
 # ==============================
 
-url = "https://euromillions.api.pedromealha.dev/latest"
+url = "https://www.euro-millions.com/results"
 
-response = requests.get(url)
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
+
+response = requests.get(url, headers=headers)
 
 if response.status_code != 200:
     raise Exception(f"Erro HTTP: {response.status_code}")
 
-data = response.json()
+soup = BeautifulSoup(response.text, "html.parser")
 
-draw_numbers = sorted(data["numbers"])
-draw_stars = sorted(data["stars"])
-draw_date = data["date"]
-jackpot = data.get("jackpot", "N/A")
+# Extrair números principais
+numbers = soup.select(".balls .ball")
+draw_numbers = sorted([int(n.text) for n in numbers[:5]])
+
+# Extrair estrelas
+stars = soup.select(".balls .lucky-star")
+draw_stars = sorted([int(s.text) for s in stars[:2]])
+
+draw_date = soup.select_one(".draw-date").text.strip()
 
 # ==============================
 # VERIFICAR APOSTAS
@@ -42,8 +52,7 @@ def check_bet(bet):
     return matched_numbers, matched_stars
 
 results_text = f"🎯 Euromilhões {draw_date}\n\n"
-results_text += f"Números sorteados: {draw_numbers} ⭐ {draw_stars}\n"
-results_text += f"Jackpot: {jackpot}\n\n"
+results_text += f"Números sorteados: {draw_numbers} ⭐ {draw_stars}\n\n"
 
 for i, bet in enumerate(bets, start=1):
     m_numbers, m_stars = check_bet(bet)
