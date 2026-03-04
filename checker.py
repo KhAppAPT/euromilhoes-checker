@@ -45,8 +45,7 @@ def check_bet(bet):
 def get_prize(m_numbers, m_stars):
     for p in prize_data:
         if p["aciertos"] == f"{m_numbers}+{m_stars}":
-            value = p["premio"]
-            value = value.replace(".", "").replace(",", ".")
+            value = p["premio"].replace(".", "").replace(",", ".")
             return float(value)
     return 0.0
 
@@ -89,7 +88,7 @@ with open(history_file, "w") as f:
     json.dump(history, f, indent=2)
 
 total_acumulado = sum(item["won"] for item in history)
-results_text += f"\n📊 Total acumulado: {total_acumulado:.2f}€"
+results_text += f"📊 Total acumulado: {total_acumulado:.2f}€\n"
 
 # ==============================
 # ENVIAR EMAIL
@@ -101,27 +100,6 @@ DESTINO = os.environ["DESTINO"]
 
 msg = MIMEText(results_text)
 msg["Subject"] = "Resultado Euromilhões"
-msg["From"] = EMAIL
-msg["To"] = DESTINO
-
-with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-    server.login(EMAIL, PASSWORD)
-    server.send_message(msg)
-
-print("Email enviado com sucesso!")for i, bet in enumerate(bets, start=1):
-    m_numbers, m_stars = check_bet(bet)
-    results_text += f"Aposta {i}: {m_numbers} números e {m_stars} estrelas\n"
-
-# ==============================
-# ENVIAR EMAIL
-# ==============================
-
-EMAIL = os.environ["EMAIL"]
-PASSWORD = os.environ["PASSWORD"]
-DESTINO = os.environ["DESTINO"]
-
-msg = MIMEText(results_text)
-msg["Subject"] = "Teste Euromilhões"
 msg["From"] = EMAIL
 msg["To"] = DESTINO
 
