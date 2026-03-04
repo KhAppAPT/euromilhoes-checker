@@ -15,10 +15,10 @@ bets = [
 ]
 
 # ==============================
-# OBTER RESULTADOS
+# OBTER RESULTADOS (API alternativa)
 # ==============================
 
-url = "https://www.euro-millions.com/api/draws/latest"
+url = "https://euromillions.api.pedromealha.dev/latest"
 
 response = requests.get(url)
 
@@ -30,20 +30,16 @@ data = response.json()
 draw_numbers = sorted(data["numbers"])
 draw_stars = sorted(data["stars"])
 draw_date = data["date"]
-jackpot = data["jackpot"]
+jackpot = data.get("jackpot", "N/A")
 
 # ==============================
-# FUNÇÃO PARA VERIFICAR APOSTA
+# VERIFICAR APOSTAS
 # ==============================
 
 def check_bet(bet):
     matched_numbers = len(set(bet["numbers"]) & set(draw_numbers))
     matched_stars = len(set(bet["stars"]) & set(draw_stars))
     return matched_numbers, matched_stars
-
-# ==============================
-# MONTAR TEXTO DO EMAIL
-# ==============================
 
 results_text = f"🎯 Euromilhões {draw_date}\n\n"
 results_text += f"Números sorteados: {draw_numbers} ⭐ {draw_stars}\n"
