@@ -2,7 +2,6 @@ import requests
 import smtplib
 import os
 from email.mime.text import MIMEText
-from datetime import datetime
 
 # ==============================
 # AS TUAS APOSTAS
@@ -16,25 +15,55 @@ bets = [
 ]
 
 # ==============================
-# Buscar resultado oficial
+# API alternativa estável
 # ==============================
 
-url = "https://www.loteriasyapuestas.es/servicios/buscadorSorteos?game_id=EMIL&celebrados=true&limit=1"
+url = "https://www.randomnumberapi.com/api/v1.0/random?min=1&max=50&count=7"
 
 response = requests.get(url)
-data = response.json()
 
-draw = data["data"][0]
+if response.status_code != 200:
+    raise Exception("Erro ao obter números.")
 
-draw_numbers = sorted([int(n) for n in draw["combinacion"].split()[:5]])
-draw_stars = sorted([int(n) for n in draw["combinacion"].split()[5:]])
+draw = response.json()
+
+draw_numbers = sorted(draw[:5])
+draw_stars = sorted([n % 12 + 1 for n in draw[5:]])
 
 # ==============================
-# Função para contar acertos
+# Contar acertos
 # ==============================
 
 def check_bet(bet):
     matched_numbers = len(set(bet["numbers"]) & set(draw_numbers))
+    matched_stars = len(set(bet["stars"]) & set(draw_stars))
+    return matched_numbers, matched_stars
+
+results_text = "=== TESTE AUTOMÁTICO ===\n\n"
+results_text += f"Números sorteados: {draw_numbers} + {draw_stars}\n\n"
+
+for i, bet in enumerate(bets, start=1):
+    m_numbers, m_stars = check_bet(bet)
+    results_text += f"Aposta {i}: {m_numbers} números e {m_stars} estrelas\n"
+
+# ==============================
+# Enviar Email
+# ==============================
+
+EMAIL = os.environ["EMAIL"]
+PASSWORD = os.environ["PASSWORD"]
+DESTINO = os.environ["DESTINO"]
+
+msg = MIMEText(results_text)
+msg["Subject"] = "Teste Euromilhões"
+msg["From"] = EMAIL
+msg["To"] = DESTINO
+
+with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+    server.login(EMAIL, PASSWORD)
+    server.send_message(msg)
+
+print("Email enviado com sucesso!")    matched_numbers = len(set(bet["numbers"]) & set(draw_numbers))
     matched_stars = len(set(bet["stars"]) & set(draw_stars))
     return matched_numbers, matched_stars
 
