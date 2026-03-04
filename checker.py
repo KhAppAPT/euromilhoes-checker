@@ -19,20 +19,21 @@ bets = [
 # OBTER RESULTADO REAL
 # ==============================
 
-url = "https://www.loteriasyapuestas.es/servicios/buscadorSorteos?game_id=EMIL&celebrados=true&limit=1"
-headers = {"User-Agent": "Mozilla/5.0"}
+url = "https://raw.githubusercontent.com/jcphlux/euromillions-results/master/latest.json"
 
-response = requests.get(url, headers=headers)
+response = requests.get(url)
+
+if response.status_code != 200:
+    raise Exception("Erro ao obter resultados.")
+
 data = response.json()
-draw = data["data"][0]
 
-combinacion = draw["combinacion"].split()
-draw_numbers = sorted([int(n) for n in combinacion[:5]])
-draw_stars = sorted([int(n) for n in combinacion[5:]])
+draw_numbers = sorted(data["numbers"])
+draw_stars = sorted(data["stars"])
+jackpot = data.get("jackpot", "N/A")
+draw_date = data.get("date", "N/A")
 
-prize_data = draw["premios"]
-jackpot = draw.get("bote", "N/A")
-
+prize_data = data.get("prizes", [])
 # ==============================
 # FUNÇÕES
 # ==============================
