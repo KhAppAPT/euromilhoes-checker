@@ -1,7 +1,6 @@
 import requests
 import smtplib
 import os
-import json
 from email.mime.text import MIMEText
 
 # ==============================
@@ -16,25 +15,67 @@ bets = [
 ]
 
 # ==============================
-# FUNÇÃO PARA OBTER RESULTADOS
+# OBTER RESULTADOS VIA API
 # ==============================
 
-def get_results():
-    try:
-        url = "https://www.loteriasyapuestas.es/servicios/buscadorSorteos?game_id=EMIL&celebrados=true&limit=1"
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json"
-        }
+API_KEY = os.environ["API_KEY"]
 
-        response = requests.get(url, headers=headers, timeout=15)
+url = f"https://api.the-odds-api.com/v4/lotteries/euromillions/results/?apiKey={API_KEY}"
 
-        if response.status_code != 200:
-            return None, "Erro HTTP: " + str(response.status_code)
+response = requests.get(url)
 
-        data = response.json()
-        draw = data["data"][0]
+if response.status_code != 200:
+    raise Exception(f"Erro API: {response.status_code}")
 
+data = response.json()
+
+# Ajustar conforme estrutura real devolvida
+latest = data[0]
+
+draw_numbers = sorted(latest["numbers"])
+draw_stars = sorted(latest["stars"])
+draw_date = latest["date"]
+jackpot = latest.get("jackpot", "N/A")
+
+# ==============================
+# PROCESSAR APOSTAS
+# ==============================
+
+def check_bet(bet):
+    matched_numbers = len(set(bet["numbers"]) & set(draw_numbers))
+    matched_stars = len(set(bet["stars"]) & set(draw_stars))
+    return matched_numbers, matched_stars
+
+total_won = 0
+
+results_text = f"🎯 Euromilhões {draw_date}\n\n"
+results_text += f"Números: {draw_numbers} ⭐ {draw_stars}\n"
+results_text += f"Jackpot: {jackpot}\n\n"
+
+for i, bet in enumerate(bets, start=1):
+    m_numbers, m_stars = check_bet(bet)
+    results_text += f"Aposta {i}: {m_numbers}+{m_stars}\n"
+
+results_text += "\n(Verifica o valor do prémio no site oficial)"
+
+# ==============================
+# ENVIAR EMAIL
+# ==============================
+
+EMAIL = os.environ["EMAIL"]
+PASSWORD = os.environ["PASSWORD"]
+DESTINO = os.environ["DESTINO"]
+
+msg = MIMEText(results_text)
+msg["Subject"] = "Resultado Euromilhões"
+msg["From"] = EMAIL
+msg["To"] = DESTINO
+
+with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+    server.login(EMAIL, PASSWORD)
+    server.send_message(msg)
+
+print("Processo concluído.")
         combinacion = draw["combinacion"].split()
         numbers = sorted([int(n) for n in combinacion[:5]])
         stars = sorted([int(n) for n in combinacion[5:]])
