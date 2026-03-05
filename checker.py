@@ -1,42 +1,31 @@
-import requests
-from bs4 import BeautifulSoup
-import smtplib
-import os
+bets = [
+    {"nums": [12,13,18,19,26], "stars": [4,11]},
+    {"nums": [21,30,33,45,50], "stars": [3,7]},
+    {"nums": [2,10,13,28,38], "stars": [2,11]},
+    {"nums": [17,20,28,41,44], "stars": [6,7]},
+]
 
-url = "https://www.euro-millions.com/results"
+print("Introduz os números sorteados:")
 
-headers = {
-    "User-Agent": "Mozilla/5.0"
-}
+numeros = list(map(int, input("5 números (separados por espaço): ").split()))
+estrelas = list(map(int, input("2 estrelas (separadas por espaço): ").split()))
 
-response = requests.get(url, headers=headers)
+print("\nResultado do sorteio:")
+print("Números:", numeros)
+print("Estrelas:", estrelas)
 
-if response.status_code != 200:
-    raise Exception(f"Erro HTTP: {response.status_code}")
+print("\nResultados das apostas:\n")
 
-soup = BeautifulSoup(response.text, "html.parser")
+for i, bet in enumerate(bets, start=1):
 
-numbers = [n.text for n in soup.select(".result__number")][:5]
-stars = [s.text for s in soup.select(".result__star")][:2]
+    acertos_nums = len(set(bet["nums"]) & set(numeros))
+    acertos_stars = len(set(bet["stars"]) & set(estrelas))
 
-print("Números:", numbers)
-print("Estrelas:", stars)
+    print(f"Aposta {i}")
+    print("Acertos números:", acertos_nums)
+    print("Acertos estrelas:", acertos_stars)
 
-EMAIL = os.environ["EMAIL"]
-PASSWORD = os.environ["PASSWORD"]
-DESTINO = os.environ["DESTINO"]
+    if acertos_nums >= 2:
+        print("👉 Possível prémio!")
 
-mensagem = f"""
-Subject: Resultado Euromilhões
-
-Números: {' '.join(numbers)}
-Estrelas: {' '.join(stars)}
-"""
-
-server = smtplib.SMTP("smtp.gmail.com", 587)
-server.starttls()
-server.login(EMAIL, PASSWORD)
-server.sendmail(EMAIL, DESTINO, mensagem)
-server.quit()
-
-print("Email enviado!")
+    print()
