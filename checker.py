@@ -1,5 +1,4 @@
 import requests
-from bs4 import BeautifulSoup
 import smtplib
 import os
 from email.mime.text import MIMEText
@@ -16,13 +15,14 @@ bets = [
 ]
 
 # ==============================
-# OBTER RESULTADOS VIA SCRAPING
+# OBTER RESULTADOS (JSON INTERNO)
 # ==============================
 
-url = "https://www.euro-millions.com/results"
+url = "https://www.euro-millions.com/api/draws"
 
 headers = {
-    "User-Agent": "Mozilla/5.0"
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json"
 }
 
 response = requests.get(url, headers=headers)
@@ -30,17 +30,13 @@ response = requests.get(url, headers=headers)
 if response.status_code != 200:
     raise Exception(f"Erro HTTP: {response.status_code}")
 
-soup = BeautifulSoup(response.text, "html.parser")
+data = response.json()
 
-# Extrair números principais
-numbers = soup.select(".balls .ball")
-draw_numbers = sorted([int(n.text) for n in numbers[:5]])
+latest_draw = data[0]
 
-# Extrair estrelas
-stars = soup.select(".balls .lucky-star")
-draw_stars = sorted([int(s.text) for s in stars[:2]])
-
-draw_date = soup.select_one(".draw-date").text.strip()
+draw_numbers = sorted(latest_draw["balls"])
+draw_stars = sorted(latest_draw["luckyStars"])
+draw_date = latest_draw["drawDate"]
 
 # ==============================
 # VERIFICAR APOSTAS
